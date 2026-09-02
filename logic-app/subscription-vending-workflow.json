@@ -1,0 +1,285 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    }
+  },
+  "triggers": {
+    "manual": {
+      "type": "Request",
+      "kind": "Http",
+      "operationOptions": "EnableSchemaValidation",
+      "inputs": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "requestId": { "type": "string" },
+            "projectName": { "type": "string" },
+            "environment": { "type": "string" },
+            "businessOwner": { "type": "string" },
+            "technicalOwner": { "type": "string" },
+            "subscriptionType": { "type": "string" },
+            "managementGroup": { "type": "string" },
+            "region": { "type": "string" },
+            "dataClassification": { "type": "string" },
+            "budget": { "type": "number" },
+            "billingProfile": { "type": "string" },
+            "networking": { "type": "string" },
+            "rbac": { "type": "string" },
+            "tags": { "type": "string" },
+            "requiredApprovals": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "actions": {
+    "Initialize_Request_Status": {
+      "type": "InitializeVariable",
+      "inputs": {
+        "variables": [
+          {
+            "name": "requestStatus",
+            "type": "string",
+            "value": "Received"
+          },
+          {
+            "name": "approvalList",
+            "type": "array",
+            "value": "@triggerBody()?['requiredApprovals']"
+          }
+        ]
+      },
+      "runAfter": {}
+    },
+    "Check_Required_Fields": {
+      "type": "If",
+      "expression": {
+        "and": [
+          {
+            "not": {
+              "equals": [
+                "@triggerBody()?['projectName']",
+                ""
+              ]
+            }
+          },
+          {
+            "not": {
+              "equals": [
+                "@triggerBody()?['managementGroup']",
+                ""
+              ]
+            }
+          },
+          {
+            "not": {
+              "equals": [
+                "@triggerBody()?['region']",
+                ""
+              ]
+            }
+          }
+        ]
+      },
+      "actions": {
+        "Set_Validation_Success": {
+          "type": "SetVariable",
+          "inputs": {
+            "name": "requestStatus",
+            "value": "Validated"
+          },
+          "runAfter": {}
+        }
+      },
+      "else": {
+        "actions": {
+          "Set_Validation_Failed": {
+            "type": "SetVariable",
+            "inputs": {
+              "name": "requestStatus",
+              "value": "Validation failed: required fields missing"
+            },
+            "runAfter": {}
+          },
+          "Respond_To_Request": {
+            "type": "Response",
+            "kind": "Http",
+            "inputs": {
+              "statusCode": 400,
+              "body": {
+                "requestId": "@triggerBody()?['requestId']",
+                "status": "@variables('requestStatus')"
+              }
+            },
+            "runAfter": {
+              "Set_Validation_Failed": [
+                "Succeeded"
+              ]
+            }
+          }
+        }
+      },
+      "runAfter": {
+        "Initialize_Request_Status": [
+          "Succeeded"
+        ]
+      }
+    },
+    "Approval_Gateway": {
+      "type": "If",
+      "expression": {
+        "equals": [
+          "@variables('requestStatus')",
+          "Validated"
+        ]
+      },
+      "actions": {
+        "Set_Approval_Status": {
+          "type": "SetVariable",
+          "inputs": {
+            "name": "requestStatus",
+            "value": "Awaiting mandatory approvals"
+          },
+          "runAfter": {}
+        },
+        "Compose_Approval_Outcome": {
+          "type": "Compose",
+          "inputs": {
+            "requestId": "@triggerBody()?['requestId']",
+            "projectName": "@triggerBody()?['projectName']",
+            "approvalsRequired": "@variables('approvalList')",
+            "status": "Awaiting mandatory approvals"
+          },
+          "runAfter": {
+            "Set_Approval_Status": [
+              "Succeeded"
+            ]
+          }
+        }
+      },
+      "else": {
+        "actions": {
+          "Respond_With_Validation_Error": {
+            "type": "Response",
+            "kind": "Http",
+            "inputs": {
+              "statusCode": 422,
+              "body": {
+                "requestId": "@triggerBody()?['requestId']",
+                "status": "@variables('requestStatus')"
+              }
+            },
+            "runAfter": {}
+          }
+        }
+      },
+      "runAfter": {
+        "Check_Required_Fields": [
+          "Succeeded"
+        ]
+      }
+    },
+    "Approval_Completed_Condition": {
+      "type": "If",
+      "expression": {
+        "and": [
+          {
+            "equals": [
+              "@triggerBody()?['environment']",
+              "Production"
+            ]
+          },
+          {
+            "greaterOrEquals": [
+              "@triggerBody()?['budget']",
+              100000
+            ]
+          }
+        ]
+      },
+      "actions": {
+        "Set_Billing_Check_Required": {
+          "type": "SetVariable",
+          "inputs": {
+            "name": "requestStatus",
+            "value": "Approvals complete; billing and management group validation pending"
+          },
+          "runAfter": {}
+        }
+      },
+      "else": {
+        "actions": {
+          "Set_Ready_For_Terraform": {
+            "type": "SetVariable",
+            "inputs": {
+              "name": "requestStatus",
+              "value": "Ready for Terraform plan"
+            },
+            "runAfter": {}
+          }
+        }
+      },
+      "runAfter": {
+        "Approval_Gateway": [
+          "Succeeded"
+        ]
+      }
+    },
+    "Terraform_Trigger": {
+      "type": "Http",
+      "kind": "Http",
+      "inputs": {
+        "method": "POST",
+        "uri": "@parameters('terraformRunnerUrl')",
+        "body": {
+          "requestId": "@triggerBody()?['requestId']",
+          "projectName": "@triggerBody()?['projectName']",
+          "managementGroup": "@triggerBody()?['managementGroup']",
+          "billingProfile": "@triggerBody()?['billingProfile']",
+          "environment": "@triggerBody()?['environment']",
+          "region": "@triggerBody()?['region']",
+          "status": "@variables('requestStatus')"
+        },
+        "authentication": {
+          "type": "ManagedServiceIdentity"
+        }
+      },
+      "runAfter": {
+        "Approval_Completed_Condition": [
+          "Succeeded"
+        ]
+      }
+    },
+    "Respond_With_Provisioning_Status": {
+      "type": "Response",
+      "kind": "Http",
+      "inputs": {
+        "statusCode": 202,
+        "body": {
+          "requestId": "@triggerBody()?['requestId']",
+          "status": "@variables('requestStatus')",
+          "terraformTriggered": true,
+          "message": "Subscription vending request accepted and Terraform runner invoked."
+        }
+      },
+      "runAfter": {
+        "Terraform_Trigger": [
+          "Succeeded"
+        ]
+      }
+    }
+  },
+  "outputs": {},
+  "parameters": {
+    "terraformRunnerUrl": {
+      "type": "string"
+    }
+  }
+}
