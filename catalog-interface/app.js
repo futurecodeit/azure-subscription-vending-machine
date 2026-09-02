@@ -2,6 +2,7 @@ const form = document.getElementById('subscriptionForm');
 const summaryContent = document.getElementById('summaryContent');
 const payloadPreview = document.getElementById('payloadPreview');
 const approvalBoard = document.getElementById('approvalBoard');
+const defaultWorkflowUrl = 'https://prod-33.uksouth.logic.azure.com:443/workflows/8c2a077cba674a7d97e15304f0391720/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=cH-zY6qaaQ61udmgoAsTDbHqpXtFGEAxXzkyWu3euyE';
 
 const approvalStages = [
   { name: 'Business Owner', status: 'approved' },
@@ -125,13 +126,8 @@ downloadJsonBtn.addEventListener('click', () => {
 
 const sendWorkflowBtn = document.getElementById('sendWorkflowBtn');
 sendWorkflowBtn.addEventListener('click', async () => {
-  const workflowUrl = localStorage.getItem('logicAppWorkflowUrl') || '';
+  const workflowUrl = localStorage.getItem('logicAppWorkflowUrl') || defaultWorkflowUrl;
   const payload = submitRequest();
-
-  if (!workflowUrl) {
-    showAlert('No Logic App workflow URL configured. Add one in localStorage under logicAppWorkflowUrl to enable posting.', 'error');
-    return;
-  }
 
   try {
     const response = await fetch(workflowUrl, {
