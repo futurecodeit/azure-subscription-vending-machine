@@ -5,6 +5,7 @@ This repository provides a working starter implementation for a governed Azure s
 - a static catalog request portal for collecting subscription inputs
 - a Terraform baseline for subscription creation, management group placement, and foundational configuration
 - a Terraform-managed Azure Logic App with an HTTP trigger
+- Azure Communication Services and Email Communication Services notifications
 - a GitHub Actions workflow that runs Terraform validation and plan
 - Key Vault-backed GitHub authentication for the Logic App
 
@@ -151,6 +152,19 @@ The actual command should be entered as:
 
 The deployment creates or updates the Logic App, its HTTP trigger, the Key Vault token retrieval action, and the GitHub dispatch action. It does not create an Azure subscription.
 
+The notification workflow is deployed as `${logic_app_name}-notifications`. It uses the system-assigned Logic App identity and the `Communication and Email Service Owner` role on the ACS resource. Configure these Terraform variables in `logic-app/terraform/main.tfvars.json` for real recipients:
+
+- `acs_resource_id` – the Azure Communication Services resource ID
+- `acs_endpoint` – the ACS endpoint
+- `acs_sender_address` – a sender on the linked, verified Email Communication Services domain
+- `customer_email`
+- `finops_email`
+- `security_email`
+- `cloud_operations_email`
+- `subscription_owners_email`
+
+The Email Communication Services domain must be verified and linked to the ACS resource before notifications are tested. The notification Logic App generates `Generate_Summary_Report`, sends `Send_Customer_Email`, sends `Send_Team_Email` to FinOps, Security, Cloud Operations, and subscription owners, and returns a `202` response after both email actions finish. A failed Terraform plan or apply is also reported and emailed with the captured error text.
+
 ## Configure and Submit the Catalog Request
 
 1. Start the local portal from the repository root:
@@ -174,10 +188,12 @@ The deployment creates or updates the Logic App, its HTTP trigger, the Key Vault
 
 6. Select **Send to Logic App**.
 
+The GitHub Actions dispatch includes `terraformOperation`, which can be `plan` or `apply`. `apply` reuses the successful plan artifact and returns the created subscription ID to the notification callback.
+
 The portal payload may omit `managementGroupId`, `billingScopeId`, and `tenantId`. For testing, the Logic App supplies:
 
-- management group test value: `b41b72d0-4e9f-4c26-8a69-f949f367c91d`
-- billing scope test value: `/providers/Microsoft.Billing/billingAccounts/00000000/billingProfiles/00000000`
+- management group test value: `/providers/Microsoft.Management/managementGroups/lending`
+- billing scope test value: `/providers/Microsoft.Billing/billingAccounts/00000000/billingProfiles/00000000/invoiceSections/00000000`
 - tenant ID: the authenticated Azure tenant configured during deployment
 
 These are test values only. Replace the billing scope with a real billing scope before using the workflow for subscription provisioning.
@@ -205,7 +221,26 @@ https://github.com/futurecodeit/azure-subscription-vending-machine/actions
 
 The dispatched run should use the `main` branch and contain the catalog request inputs. A successful wiring test means the run is created. A successful Terraform test additionally requires the Azure login and Terraform plan steps to pass.
 
-### 3. Verify from PowerShell
+### 3. Verify email notifications
+
+The GitHub workflow posts this callback contract after `plan` or `apply` completes:
+
+```json
+{
+   "requestId": "SUB-VEND-...",
+   "projectName": "Finance Data Platform",
+   "terraformOperation": "apply",
+   "status": "Succeeded",
+   "subscriptionId": "<created-subscription-id>",
+   "managementGroupId": "<management-group-id>",
+   "planSummary": "Terraform apply outcome: success",
+   "error": ""
+}
+```
+
+Inspect `Generate_Summary_Report`, `Send_Customer_Email`, and `Send_Team_Email` in the notification Logic App run history. Both email actions must be `Succeeded`; the callback response alone is not sufficient because the response is deliberately returned after either email action can complete with success or failure.
+
+### 4. Verify from PowerShell
 
 The following checks do not display the GitHub token:
 
@@ -227,6 +262,23 @@ https://github.com/futurecodeit/azure-subscription-vending-machine/actions/workf
 - No GitHub run is created: verify the workflow exists on `main` at `.github/workflows/terraform-plan.yml`.
 - GitHub `Azure login` fails: check `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, and the Entra federated credential subject.
 - Terraform plan fails after Azure login: replace the placeholder billing scope with a real billing scope and verify the management group ID and permissions.
+- Email action returns `DomainNotLinked`: verify the Email Communication Services domain is `Verified` and is present in the ACS resource `properties.linkedDomains`.
+- Email action returns `Forbidden`: verify the notification Logic App identity has `Communication and Email Service Owner` on the ACS resource and allow role-assignment propagation time.
+
+## Sandbox Lifecycle Contract
+
+The notification workflow classifies lifecycle callbacks into these states:
+
+| `lifecycleEvent` | State | Intended action |
+| --- | --- | --- |
+| `terraform-completed` | Provisioning complete | Report plan result |
+| `subscription-created` | Active | Send created notification |
+| `expiry-warning-30d`, `expiry-warning-14d`, `expiry-warning-7d`, `expiry-warning-3d`, `expiry-warning-1d` | Expiry warning | Send warning notification |
+| `extension-requested` | Extended | Update records and budget, then restart monitoring |
+| `grace-period` | Grace period | Remove customer access and send grace notice |
+| `closure` | Closed | Start the closure workflow and send final notification |
+
+The callback workflow is intentionally stateless. A durable execution record and scheduler must own subscription expiry dates, extension requests, access removal, waits, and final closure, then post these lifecycle events to the notification callback. This prevents Logic App run history from being treated as the system of record while retaining one email/report path for every lifecycle transition.
 
 ## Logic App Integration Pattern
 

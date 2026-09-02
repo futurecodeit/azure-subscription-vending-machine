@@ -23,17 +23,23 @@ const defaultPayload = {
     'FinOps',
     'Platform'
   ],
-  workflow: 'Request Initiation -> Validation -> Approval -> Subscription Creation -> Management Group Placement -> Final Notification'
+  workflow: 'Request Initiation -> Validation -> Approval -> Subscription Creation -> Management Group Placement -> Final Notification',
+  terraformOperation: 'plan',
+  lifecycleEvent: 'terraform-completed'
 };
 
 function buildPayload(formData) {
   const payload = {
     ...defaultPayload,
     projectName: formData.get('projectName'),
+    requestMode: formData.get('requestMode'),
+    businessUnit: formData.get('businessUnit'),
     environment: formData.get('environment'),
     businessOwner: formData.get('businessOwner'),
     technicalOwner: formData.get('technicalOwner'),
     subscriptionType: formData.get('subscriptionType'),
+    workloadType: formData.get('workloadType'),
+    durationDays: Number(formData.get('durationDays') || 30),
     managementGroup: formData.get('managementGroup'),
     region: formData.get('region'),
     dataClassification: formData.get('dataClassification'),
@@ -47,11 +53,26 @@ function buildPayload(formData) {
     resourceGroups: formData.get('resourceGroups'),
     tags: formData.get('tags'),
     approvalNotes: formData.get('approvalNotes'),
+    cybersecurity: formData.get('cybersecurity'),
+    aiUsage: formData.get('aiUsage'),
+    customerEmail: formData.get('customerEmail'),
+    validationSummary: validateRequest(formData),
     approvalStages,
     createdAt: new Date().toISOString()
   };
 
   return payload;
+}
+
+function validateRequest(formData) {
+  const checks = [
+    ['Naming', Boolean(formData.get('projectName')?.trim())],
+    ['Owner email', Boolean(formData.get('customerEmail')?.includes('@'))],
+    ['Budget', Number(formData.get('budget')) > 0],
+    ['Management group', Boolean(formData.get('managementGroup'))],
+    ['Duration', Number(formData.get('durationDays')) > 0]
+  ];
+  return checks.map(([name, passed]) => ({ name, status: passed ? 'Passed' : 'Fix required' }));
 }
 
 function renderApprovalBoard() {
@@ -163,6 +184,18 @@ simulateApprovalBtn.addEventListener('click', () => {
   }
   renderApprovalBoard();
   showAlert(`${nextPending.name} was approved and the workflow advanced.`, 'success');
+});
+
+document.getElementById('resubmitBtn').addEventListener('click', () => {
+  defaultPayload.status = 'Pending corrections';
+  showAlert('Request marked for correction and resubmission.', 'success');
+  renderSummary(buildPayload(new FormData(form)));
+});
+
+document.getElementById('rejectBtn').addEventListener('click', () => {
+  defaultPayload.status = 'Rejected';
+  showAlert('Request marked as rejected and ready for notification.', 'error');
+  renderSummary(buildPayload(new FormData(form)));
 });
 
 const initialPayload = buildPayload(new FormData(form));

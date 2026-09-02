@@ -30,10 +30,21 @@
                 <input name="projectName" value="Finance Data Platform" required />
               </label>
               <label>
+                <span>Business Unit</span>
+                <input name="businessUnit" value="Finance" required />
+              </label>
+              <label>
                 <span>Environment</span>
                 <select name="environment">
                   <option value="Production">Production</option>
                   <option value="Non-Production" selected>Non-Production</option>
+                </select>
+              </label>
+              <label>
+                <span>Request Mode</span>
+                <select name="requestMode">
+                  <option value="Single subscription" selected>Single subscription</option>
+                  <option value="Bulk request">Bulk request</option>
                 </select>
               </label>
               <label>
@@ -55,6 +66,19 @@
                   <option value="Platform">Platform</option>
                   <option value="Shared Services">Shared Services</option>
                 </select>
+              </label>
+              <label>
+                <span>Workload Type</span>
+                <select name="workloadType">
+                  <option value="Application" selected>Application</option>
+                  <option value="Data Platform">Data Platform</option>
+                  <option value="AI / Machine Learning">AI / Machine Learning</option>
+                  <option value="Sandbox">Sandbox</option>
+                </select>
+              </label>
+              <label>
+                <span>Subscription Duration (days)</span>
+                <input name="durationDays" value="30" type="number" min="1" required />
               </label>
             </div>
 
@@ -135,12 +159,34 @@
                 <span>Approval Notes</span>
                 <textarea name="approvalNotes" rows="3">Business approval completed. Need platform architecture and security sign-off prior to provisioning.</textarea>
               </label>
+              <label>
+                <span>Customer Email</span>
+                <input name="customerEmail" type="email" value="srinath_gadalaye@epam.com" required />
+              </label>
+              <label>
+                <span>Cybersecurity Review</span>
+                <select name="cybersecurity">
+                  <option value="Required" selected>Required</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Not applicable">Not applicable</option>
+                </select>
+              </label>
+              <label>
+                <span>AI Usage</span>
+                <select name="aiUsage">
+                  <option value="No" selected>No</option>
+                  <option value="Planned">Planned</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </label>
             </div>
 
             <div class="actions">
               <button type="submit" class="primary-btn">Generate Vending Request</button>
               <button type="button" class="secondary-btn" id="downloadJsonBtn">Download JSON</button>
               <button type="button" class="secondary-btn" id="sendWorkflowBtn">Send to Logic App</button>
+              <button type="button" class="secondary-btn" id="resubmitBtn">Fix and Resubmit</button>
+              <button type="button" class="secondary-btn danger-btn" id="rejectBtn">Reject Request</button>
             </div>
           </form>
         </section>

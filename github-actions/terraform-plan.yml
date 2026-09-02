@@ -31,6 +31,43 @@ on:
         description: Tenant ID
         required: true
         type: string
+      businessUnit:
+        description: Business unit
+        required: false
+        type: string
+      businessOwner:
+        description: Business owner
+        required: false
+        type: string
+      technicalOwner:
+        description: Technical owner
+        required: false
+        type: string
+      costCentre:
+        description: Cost centre
+        required: false
+        type: string
+      budget:
+        description: Budget amount
+        required: false
+        type: string
+      durationDays:
+        description: Subscription duration in days
+        required: false
+        default: '30'
+        type: string
+      statusCallbackUrl:
+        description: Logic App callback URL for final plan status
+        required: true
+        type: string
+      terraformOperation:
+        description: Terraform operation to execute
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
 
 permissions:
   id-token: write
@@ -70,6 +107,7 @@ jobs:
         run: terraform validate
 
       - name: Terraform plan
+        id: terraform_plan
         working-directory: terraform
         run: |
           terraform plan \
@@ -81,12 +119,63 @@ jobs:
             -var="billing_scope_id=${{ github.event.inputs.billingScopeId }}" \
             -var="management_group_id=${{ github.event.inputs.managementGroupId }}" \
             -var="project_name=${{ github.event.inputs.projectName }}" \
-            -var="business_owner=${{ vars.BUSINESS_OWNER || 'Platform Team' }}" \
-            -var="technical_owner=${{ vars.TECHNICAL_OWNER || 'Cloud Platform Team' }}" \
-            -var="cost_centre=${{ vars.COST_CENTRE || 'CC-0000' }}" \
+            -var="business_owner=${{ github.event.inputs.businessOwner || vars.BUSINESS_OWNER || 'Platform Team' }}" \
+            -var="technical_owner=${{ github.event.inputs.technicalOwner || vars.TECHNICAL_OWNER || 'Cloud Platform Team' }}" \
+            -var="cost_centre=${{ github.event.inputs.costCentre || vars.COST_CENTRE || 'CC-0000' }}" \
             -var="environment=${{ github.event.inputs.environment }}" \
             -var="location=${{ github.event.inputs.region }}" \
-            -var="tags={\"request-id\":\"${{ github.event.inputs.requestId }}\",\"managed-by\":\"logic-app\"}"
+            -var="tags={\"request-id\":\"${{ github.event.inputs.requestId }}\",\"managed-by\":\"logic-app\",\"business-unit\":\"${{ github.event.inputs.businessUnit }}\",\"business-owner\":\"${{ github.event.inputs.businessOwner }}\",\"technical-owner\":\"${{ github.event.inputs.technicalOwner }}\"}" \
+            -out=terraform.tfplan 2>plan-error.txt
+
+      - name: Terraform apply
+        id: terraform_apply
+        if: ${{ github.event.inputs.terraformOperation == 'apply' && steps.terraform_plan.outcome == 'success' }}
+        working-directory: terraform
+        run: terraform apply -input=false -auto-approve terraform.tfplan 2>apply-error.txt
+
+      - name: Report result to Logic App
+        if: always()
+        env:
+          STATUS_CALLBACK_URL: ${{ github.event.inputs.statusCallbackUrl }}
+          OPERATION: ${{ github.event.inputs.terraformOperation }}
+          PLAN_OUTCOME: ${{ steps.terraform_plan.outcome }}
+          APPLY_OUTCOME: ${{ steps.terraform_apply.outcome }}
+        run: |
+          status="Succeeded"
+          outcome="$PLAN_OUTCOME"
+          error_file="terraform/plan-error.txt"
+          if [ "$OPERATION" = "apply" ]; then
+            outcome="$APPLY_OUTCOME"
+            error_file="terraform/apply-error.txt"
+          fi
+          if [ "$outcome" != "success" ]; then status="Failed"; fi
+          subscription_id=""
+          if [ "$OPERATION" = "apply" ] && [ "$status" = "Succeeded" ]; then
+            subscription_id=$(terraform -chdir=terraform output -raw subscription_id 2>/dev/null || true)
+          fi
+          error_message=""
+          if [ -f "$error_file" ]; then error_message=$(tr '\n' ' ' < "$error_file"); fi
+          jq -n \
+            --arg requestId "${{ github.event.inputs.requestId }}" \
+            --arg projectName "${{ github.event.inputs.projectName }}" \
+            --arg environment "${{ github.event.inputs.environment }}" \
+            --arg managementGroupId "${{ github.event.inputs.managementGroupId }}" \
+            --arg billingScopeId "${{ github.event.inputs.billingScopeId }}" \
+            --arg region "${{ github.event.inputs.region }}" \
+            --arg tenantId "${{ github.event.inputs.tenantId }}" \
+            --arg terraformOperation "$OPERATION" \
+            --arg businessUnit "${{ github.event.inputs.businessUnit }}" \
+            --arg businessOwner "${{ github.event.inputs.businessOwner }}" \
+            --arg technicalOwner "${{ github.event.inputs.technicalOwner }}" \
+            --arg costCentre "${{ github.event.inputs.costCentre }}" \
+            --arg budget "${{ github.event.inputs.budget }}" \
+            --arg durationDays "${{ github.event.inputs.durationDays }}" \
+            --arg status "$status" \
+            --arg planSummary "Terraform $OPERATION outcome: $outcome" \
+            --arg error "$error_message" \
+            --arg subscriptionId "$subscription_id" \
+            '{requestId:$requestId,projectName:$projectName,environment:$environment,managementGroupId:$managementGroupId,billingScopeId:$billingScopeId,region:$region,tenantId:$tenantId,businessUnit:$businessUnit,businessOwner:$businessOwner,technicalOwner:$technicalOwner,costCentre:$costCentre,budget:(if $budget == "" then 0 else ($budget|tonumber) end),durationDays:(if $durationDays == "" then 30 else ($durationDays|tonumber) end),terraformOperation:$terraformOperation,status:$status,planSummary:$planSummary,error:$error,subscriptionId:$subscriptionId}' \
+            | curl --fail-with-body -X POST "$STATUS_CALLBACK_URL" -H "Content-Type: application/json" --data-binary @-
 
       - name: Publish Terraform plan summary
         if: always()
@@ -96,4 +185,4 @@ jobs:
           echo "Environment: ${{ github.event.inputs.environment }}"
           echo "Management Group: ${{ github.event.inputs.managementGroupId }}"
           echo "Region: ${{ github.event.inputs.region }}"
-          echo "Terraform Plan executed successfully."
+          echo "Terraform ${{ github.event.inputs.terraformOperation }} outcome: ${{ steps.terraform_apply.outcome || steps.terraform_plan.outcome }}"

@@ -15,6 +15,11 @@ output "logic_app_trigger_callback_url" {
   sensitive = true
 }
 
+output "github_status_callback_url" {
+  value     = azurerm_logic_app_trigger_http_request.github_status.callback_url
+  sensitive = true
+}
+
 output "storage_account_name" {
   value = azurerm_storage_account.workflow.name
 }

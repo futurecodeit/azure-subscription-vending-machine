@@ -66,11 +66,59 @@ variable "github_token_secret_name" {
 variable "test_management_group_id" {
   description = "Default management group value used until the portal supplies a real ID."
   type        = string
-  default     = "b41b72d0-4e9f-4c26-8a69-f949f367c91d"
+  default     = "/providers/Microsoft.Management/managementGroups/lending"
 }
 
 variable "test_billing_scope_id" {
   description = "Default billing scope value used for plan-only testing."
   type        = string
-  default     = "/providers/Microsoft.Billing/billingAccounts/00000000/billingProfiles/00000000"
+  default     = "/providers/Microsoft.Billing/billingAccounts/00000000/billingProfiles/00000000/invoiceSections/00000000"
+}
+
+variable "acs_resource_id" {
+  description = "Azure Communication Services resource used for lifecycle email notifications."
+  type        = string
+  default     = "/subscriptions/5e546d2f-02ec-419a-8305-ad234518d98f/resourceGroups/rg-sub-vending/providers/Microsoft.Communication/CommunicationServices/lz"
+}
+
+variable "acs_endpoint" {
+  description = "Azure Communication Services endpoint."
+  type        = string
+  default     = "https://lz.india.communication.azure.com"
+}
+
+variable "acs_sender_address" {
+  description = "Verified ACS Email sender address."
+  type        = string
+  default     = "DoNotReply@b5fd871c-8f7d-4c19-9ff3-9dfd6e6f6a12.azurecomm.net"
+}
+
+variable "customer_email" {
+  description = "Default customer notification recipient for testing."
+  type        = string
+  default     = "srinath_gadalaye@epam.com"
+}
+
+variable "finops_email" {
+  description = "FinOps notification recipient."
+  type        = string
+  default     = "srinath_gadalaye@epam.com"
+}
+
+variable "security_email" {
+  description = "Security notification recipient."
+  type        = string
+  default     = "srinath_gadalaye@epam.com"
+}
+
+variable "cloud_operations_email" {
+  description = "Cloud Operations notification recipient."
+  type        = string
+  default     = "srinath_gadalaye@epam.com"
+}
+
+variable "subscription_owners_email" {
+  description = "Subscription owners notification recipient."
+  type        = string
+  default     = "srinath_gadalaye@epam.com"
 }
