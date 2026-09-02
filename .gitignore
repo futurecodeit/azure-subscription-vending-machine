@@ -1,0 +1,16 @@
+# Terraform generated files
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+
+# Local secrets and environment overrides
+*.tfvars
+*.tfvars.json
+!.example.tfvars.json
+
+# Operating system files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Azure Subscription Vending Catalog</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Azure Platform Governance</p>
+          <h1>Subscription Vending Request</h1>
+        </div>
+        <div class="header-actions">
+          <div class="header-badge">Governed Request Portal</div>
+          <button type="button" class="secondary-btn small-btn" id="simulateApprovalBtn">Approve Next Stage</button>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="form-panel">
+          <form id="subscriptionForm">
+            <div class="section-title">1. Requester and Business Information</div>
+
+            <div class="form-grid two-col">
+              <label>
+                <span>Project / Application Name</span>
+                <input name="projectName" value="Finance Data Platform" required />
+              </label>
+              <label>
+                <span>Environment</span>
+                <select name="environment">
+                  <option value="Production">Production</option>
+                  <option value="Non-Production" selected>Non-Production</option>
+                </select>
+              </label>
+              <label>
+                <span>Business Owner</span>
+                <input name="businessOwner" value="A. Patel" required />
+              </label>
+              <label>
+                <span>Technical Owner</span>
+                <input name="technicalOwner" value="Cloud Platform Team" required />
+              </label>
+              <label>
+                <span>Cost Centre</span>
+                <input name="costCentre" value="CC-4051" required />
+              </label>
+              <label>
+                <span>Subscription Type</span>
+                <select name="subscriptionType">
+                  <option value="Application">Application</option>
+                  <option value="Platform">Platform</option>
+                  <option value="Shared Services">Shared Services</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="section-title">2. Azure Governance and Architecture</div>
+
+            <div class="form-grid two-col">
+              <label>
+                <span>Management Group</span>
+                <select name="managementGroup">
+                  <option value="Landing Zones/Production">Landing Zones / Production</option>
+                  <option value="Landing Zones/NonProduction" selected>Landing Zones / NonProduction</option>
+                </select>
+              </label>
+              <label>
+                <span>Region</span>
+                <select name="region">
+                  <option value="uksouth">uksouth</option>
+                  <option value="westeurope">westeurope</option>
+                  <option value="northeurope">northeurope</option>
+                </select>
+              </label>
+              <label>
+                <span>Data Classification</span>
+                <select name="dataClassification">
+                  <option value="Internal">Internal</option>
+                  <option value="Confidential">Confidential</option>
+                  <option value="Highly Confidential">Highly Confidential</option>
+                </select>
+              </label>
+              <label>
+                <span>Billing Profile</span>
+                <input name="billingProfile" value="BP-2024-081" />
+              </label>
+              <label>
+                <span>Budget</span>
+                <input name="budget" value="250000" type="number" min="0" required />
+              </label>
+              <label>
+                <span>Budget Currency</span>
+                <select name="budgetCurrency">
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP" selected>GBP</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="form-grid two-col">
+              <label>
+                <span>Networking Requirement</span>
+                <textarea name="networking" rows="3">Private connectivity to on-premises, required VNet hub integration, no public ingress except limited Bastion and App Gateway.</textarea>
+              </label>
+              <label>
+                <span>IP Address Requirement</span>
+                <textarea name="ipAddress" rows="3">Two dedicated subnets in shared landing zone. Request 10.28.40.0/24 and 10.28.41.0/24.</textarea>
+              </label>
+            </div>
+
+            <div class="section-title">3. Security, Access and Tagging</div>
+
+            <div class="form-grid two-col">
+              <label>
+                <span>RBAC Requirement</span>
+                <textarea name="rbac" rows="3">Subscription Contributor; Platform Ops Reader; Security Reader; Application Administrators and Data Engineers.</textarea>
+              </label>
+              <label>
+                <span>Required Resource Groups</span>
+                <textarea name="resourceGroups" rows="3">rg-network, rg-platform, rg-app, rg-monitoring, rg-security</textarea>
+              </label>
+            </div>
+
+            <div class="form-grid two-col">
+              <label>
+                <span>Mandatory Tags</span>
+                <textarea name="tags" rows="3">cost-centre=CC-4051, owner=Cloud Platform Team, application=Finance Data Platform, data-classification=Confidential, environment=Non-Production</textarea>
+              </label>
+              <label>
+                <span>Approval Notes</span>
+                <textarea name="approvalNotes" rows="3">Business approval completed. Need platform architecture and security sign-off prior to provisioning.</textarea>
+              </label>
+            </div>
+
+            <div class="actions">
+              <button type="submit" class="primary-btn">Generate Vending Request</button>
+              <button type="button" class="secondary-btn" id="downloadJsonBtn">Download JSON</button>
+              <button type="button" class="secondary-btn" id="sendWorkflowBtn">Send to Logic App</button>
+            </div>
+          </form>
+        </section>
+
+        <aside class="summary-panel">
+          <div class="summary-card">
+            <h2>Request Summary</h2>
+            <div id="summaryContent"></div>
+          </div>
+
+          <div class="summary-card">
+            <h2>Approval Status</h2>
+            <div id="approvalBoard" class="approval-board"></div>
+          </div>
+
+          <div class="summary-card">
+            <h2>Workflow Payload</h2>
+            <pre id="payloadPreview"></pre>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
