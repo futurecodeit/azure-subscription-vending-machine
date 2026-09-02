@@ -62,20 +62,16 @@ resource "azurerm_logic_app_workflow" "vending" {
   enabled = true
 
   parameters = {
-    terraformRunnerUrl     = var.terraform_runner_url
-    githubToken             = var.github_token
-    testManagementGroupId  = var.test_management_group_id
-    testBillingScopeId     = var.test_billing_scope_id
-    azureTenantId          = var.tenant_id
+    terraformRunnerUrl    = var.terraform_runner_url
+    testManagementGroupId = var.test_management_group_id
+    testBillingScopeId    = var.test_billing_scope_id
+    azureTenantId         = var.tenant_id
   }
 
   workflow_parameters = {
     terraformRunnerUrl = jsonencode({
       defaultValue = var.terraform_runner_url
       type         = "String"
-    })
-    githubToken = jsonencode({
-      type = "SecureString"
     })
     testManagementGroupId = jsonencode({
       defaultValue = var.test_management_group_id
@@ -106,12 +102,12 @@ resource "azurerm_logic_app_trigger_http_request" "manual" {
       projectName       = { type = "string" }
       environment       = { type = "string" }
       managementGroup   = { type = "string" }
-              managementGroupId = { type = "string" }
+      managementGroupId = { type = "string" }
       billingProfile    = { type = "string" }
-              billingScopeId    = { type = "string" }
+      billingScopeId    = { type = "string" }
       budget            = { type = "number" }
       region            = { type = "string" }
-              tenantId          = { type = "string" }
+      tenantId          = { type = "string" }
       requiredApprovals = { type = "array" }
     }
   })
@@ -161,10 +157,10 @@ resource "azurerm_logic_app_action_http" "github_dispatch" {
   method       = "POST"
   uri          = "https://api.github.com/repos/${var.github_owner}/${var.github_repository}/actions/workflows/terraform-plan.yml/dispatches"
   headers = {
-    Accept               = "application/vnd.github+json"
-    Authorization        = "Bearer @{parameters('githubToken')}"
+    Accept                 = "application/vnd.github+json"
+    Authorization          = "Bearer @{body('Get_GitHub_Token')?['value']}"
     "X-GitHub-Api-Version" = "2022-11-28"
-    "Content-Type"       = "application/json"
+    "Content-Type"         = "application/json"
   }
   body = jsonencode({
     ref = var.github_ref
@@ -179,7 +175,27 @@ resource "azurerm_logic_app_action_http" "github_dispatch" {
     }
   })
   run_after {
-    action_name   = azurerm_logic_app_action_custom.initialize_request_status.name
+    action_name   = azurerm_logic_app_action_custom.get_github_token.name
     action_result = "Succeeded"
   }
+}
+
+resource "azurerm_logic_app_action_custom" "get_github_token" {
+  name         = "Get_GitHub_Token"
+  logic_app_id = azurerm_logic_app_workflow.vending.id
+  body = jsonencode({
+    type = "Http"
+    inputs = {
+      method = "GET"
+      uri    = "${var.key_vault_uri}/secrets/${var.github_token_secret_name}?api-version=7.4"
+      authentication = {
+        type     = "ManagedServiceIdentity"
+        audience = "https://vault.azure.net"
+      }
+    }
+    runAfter = {
+      Initialize_Request_Status = ["Succeeded"]
+    }
+  })
+  depends_on = [azurerm_logic_app_action_custom.initialize_request_status]
 }

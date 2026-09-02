@@ -51,11 +51,16 @@ variable "github_ref" {
   default     = "main"
 }
 
-variable "github_token" {
-  description = "GitHub token used by Logic App to dispatch the workflow. Supply through TF_VAR_github_token."
+variable "key_vault_uri" {
+  description = "Key Vault URI containing the GitHub dispatch token."
   type        = string
-  sensitive   = true
-  default     = ""
+  default     = "https://az-kv-lending.vault.azure.net"
+}
+
+variable "github_token_secret_name" {
+  description = "Key Vault secret name containing the GitHub dispatch token."
+  type        = string
+  default     = "github-actions-token"
 }
 
 variable "test_management_group_id" {
