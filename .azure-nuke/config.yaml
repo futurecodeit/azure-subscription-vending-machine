@@ -1,5 +1,5 @@
-subscriptions:
-  - ${SUBSCRIPTION_ID}
+regions:
+  - all
  
 resource-types:
   includes:
@@ -8,7 +8,9 @@ resource-types:
     - KeyVault
     - VirtualNetwork
  
-filters:
-  ResourceGroup:
-    - "rg-monitoring"
-    - "rg-shared"
+accounts:
+  __AZURE_TENANT_ID__:
+    filters:
+      ResourceGroup:
+        - "rg-monitoring"
+        - "rg-shared"
