@@ -85,6 +85,12 @@ jobs:
             echo "Management Group = ${{ github.event.inputs.management_group_id }}"
             echo "Subscription = ${{ github.event.inputs.subscription_id }}"
             echo "Delete = ${{ github.event.inputs.delete_resources }}"
+
+      - name: Dry Run
+        if: github.event.inputs.delete_resources == 'false'
+        run: |
+            set -o pipefail
+            azure-nuke run --help
     
       - name: Dry Run
         if: github.event.inputs.delete_resources == 'false'
