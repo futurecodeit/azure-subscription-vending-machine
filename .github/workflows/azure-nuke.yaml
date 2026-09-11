@@ -103,6 +103,17 @@ jobs:
             --no-dry-run \
             --no-prompt
 
+  approve-nuke-destroy:
+    needs: nuke-validate
+  
+    runs-on: ubuntu-latest
+    environment: nuke-destroy-run
+    steps:
+    - name: Approve Nuke Destroy
+      run: echo "Approved for Nuke Destroy"
+ 
+
+
   nuke-destroy-run:
     needs: nuke-validate
  
@@ -117,8 +128,6 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_USE_OIDC: true
 
-    environment:
-      name: nuke-destroy-run
  
     steps:
       - name: Checkout repository
