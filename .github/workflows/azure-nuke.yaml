@@ -1,0 +1,71 @@
+name: Azure Nuke Cleanup
+ 
+on:
+  workflow_dispatch:
+    inputs:
+      management_group_id:
+        description: Management Group ID
+        default: "b41b72d0-4e9f-4c26-8a69-f949f367c91d "
+        required: true
+ 
+      subscription_id:
+        description: Subscription ID
+        default: "5e546d2f-02ec-419a-8305-ad234518d98f"
+        required: true
+ 
+      delete_resources:
+        description: "true = delete, false = dry-run"
+        required: true
+        default: "false"
+ 
+jobs:
+  nuke:
+ 
+    runs-on: ubuntu-latest
+ 
+    env:
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+ 
+    steps:
+ 
+    - name: Checkout
+      uses: actions/checkout@v4
+ 
+    - name: Install Azure CLI
+      uses: azure/setup-azcli@v4
+ 
+    - name: Login to Azure
+      run: |
+        az login \
+          --service-principal \
+          --username $AZURE_CLIENT_ID \
+          --password $AZURE_CLIENT_SECRET \
+          --tenant $AZURE_TENANT_ID
+ 
+    - name: Install Azure Nuke
+      run: |
+        brew install ekristen/tap/azure-nuke@1
+ 
+    - name: Show Inputs
+      run: |
+        echo "Management Group = ${{ github.event.inputs.management_group_id }}"
+        echo "Subscription = ${{ github.event.inputs.subscription_id }}"
+        echo "Delete = ${{ github.event.inputs.delete_resources }}"
+ 
+    - name: Dry Run
+      if: github.event.inputs.delete_resources == 'false'
+      run: |
+        azure-nuke run \
+          --config config.yaml \
+          --subscription-id ${{ github.event.inputs.subscription_id }}
+ 
+    - name: Delete Resources
+      if: github.event.inputs.delete_resources == 'true'
+      run: |
+        azure-nuke run \
+          --config config.yaml \
+          --subscription-id ${{ github.event.inputs.subscription_id }} \
+          --no-dry-run \
+          --no-prompt

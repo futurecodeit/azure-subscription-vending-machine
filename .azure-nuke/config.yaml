@@ -1,0 +1,17 @@
+subscriptions:
+  - ${SUBSCRIPTION_ID}
+ 
+resource-types:
+  includes:
+    - VirtualMachine
+    - StorageAccount
+    - KeyVault
+    - VirtualNetwork
+ 
+filters:
+  ResourceGroup:
+    - "rg-monitoring"
+    - "rg-shared"
+ 
+settings:
+  dry-run: true
