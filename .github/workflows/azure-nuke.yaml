@@ -115,7 +115,7 @@ jobs:
 
 
   nuke-destroy-run:
-    needs: nuke-validate
+    needs: [nuke-validate, approve-nuke-destroy]
  
     runs-on: ubuntu-latest
  
