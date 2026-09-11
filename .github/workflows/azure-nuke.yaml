@@ -29,6 +29,9 @@ jobs:
     runs-on: ubuntu-latest
  
     env:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -110,6 +113,9 @@ jobs:
     runs-on: ubuntu-latest
  
     env:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -164,7 +170,8 @@ jobs:
             echo "Management Group = ${{ github.event.inputs.management_group_id }}"
             echo "Subscription = ${{ github.event.inputs.subscription_id }}"
             echo "Delete = ${{ github.event.inputs.delete_resources }}"
-    
+
+
       - name: Delete Resources
         if: github.event.inputs.delete_resources == 'true'
         run: |
