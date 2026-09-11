@@ -4,9 +4,10 @@ regions:
 resource-types:
   includes:
     - VirtualMachine
-    - StorageAccount
     - KeyVault
     - VirtualNetwork
+  excludes:
+    - StorageAccount
  
 accounts:
   __AZURE_TENANT_ID__:
