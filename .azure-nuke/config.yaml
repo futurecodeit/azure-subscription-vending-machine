@@ -3,7 +3,6 @@ regions:
  
 resource-types:
   includes:
-    - ResourceGroup
     - VirtualNetwork
     - NetworkSecurityGroup
     - PublicIpAddress
