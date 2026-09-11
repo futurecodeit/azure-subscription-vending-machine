@@ -12,6 +12,3 @@ filters:
   ResourceGroup:
     - "rg-monitoring"
     - "rg-shared"
- 
-settings:
-  dry-run: true
