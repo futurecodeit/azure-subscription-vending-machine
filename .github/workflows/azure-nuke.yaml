@@ -46,7 +46,17 @@ jobs:
  
       - name: Install Azure Nuke
         run: |
-            brew install ekristen/tap/azure-nuke@1
+            version="v1.2.9"
+            asset="azure-nuke-${version}-linux-amd64.tar.gz"
+            base_url="https://github.com/ekristen/azure-nuke/releases/download/${version}"
+
+            curl --fail --silent --show-error --location "${base_url}/${asset}" --output "/tmp/${asset}"
+            curl --fail --silent --show-error --location "${base_url}/checksums.txt" --output /tmp/azure-nuke-checksums.txt
+            grep "${asset}" /tmp/azure-nuke-checksums.txt | sha256sum --check
+
+            tar --extract --gzip --file "/tmp/${asset}" --directory /tmp
+            sudo install --mode 0755 /tmp/azure-nuke /usr/local/bin/azure-nuke
+            azure-nuke --version
     
       - name: Show Inputs
         run: |
