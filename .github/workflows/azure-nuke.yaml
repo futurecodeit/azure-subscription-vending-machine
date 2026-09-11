@@ -89,10 +89,35 @@ jobs:
       - name: Dry Run
         if: github.event.inputs.delete_resources == 'false'
         run: |
+            set -o pipefail
             azure-nuke run \
-            --config "${RUNNER_TEMP}/azure-nuke-config.yaml" \
-            --subscription-id ${{ github.event.inputs.subscription_id }} \
-            --no-prompt
+              --config "${RUNNER_TEMP}/azure-nuke-config.yaml" \
+              --subscription-id "${{ github.event.inputs.subscription_id }}" \
+              --no-prompt \
+              --log-disable-color 2>&1 | tee "${RUNNER_TEMP}/azure-nuke-dry-run.log"
+
+      - name: Publish dry-run report
+        if: always() && github.event.inputs.delete_resources == 'false'
+        shell: bash
+        run: |
+            {
+              echo "## Azure Nuke Dry-Run Report"
+              echo
+              echo "Subscription: \\`${{ github.event.inputs.subscription_id }}\\`"
+              echo
+              echo '```text'
+              cat "${RUNNER_TEMP}/azure-nuke-dry-run.log"
+              echo '```'
+            } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload dry-run report
+        if: always() && github.event.inputs.delete_resources == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: azure-nuke-dry-run-report
+          path: ${{ runner.temp }}/azure-nuke-dry-run.log
+          if-no-files-found: error
+          retention-days: 7
     
       
 
