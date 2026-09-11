@@ -3,8 +3,14 @@ regions:
  
 resource-types:
   includes:
+    - VirtualNetwork
+    - NetworkSecurityGroup
+    - PublicIpAddress
+    - NetworkInterface
+    - VirtualMachine
   excludes:
     - StorageAccount
+    - Loganalytics Workspace
  
 accounts:
   __AZURE_TENANT_ID__:
