@@ -90,7 +90,8 @@ jobs:
         run: |
             azure-nuke run \
             --config "${RUNNER_TEMP}/azure-nuke-config.yaml" \
-            --subscription-id ${{ github.event.inputs.subscription_id }}
+            --subscription-id ${{ github.event.inputs.subscription_id }} \
+            --no-prompt
     
       - name: Delete Resources
         if: github.event.inputs.delete_resources == 'true'
