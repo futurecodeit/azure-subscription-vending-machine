@@ -23,7 +23,7 @@ permissions:
   contents: read
  
 jobs:
-  nuke:
+  nuke-validate:
  
     runs-on: ubuntu-latest
  
@@ -100,4 +100,77 @@ jobs:
             --config "${RUNNER_TEMP}/azure-nuke-config.yaml" \
             --subscription-id ${{ github.event.inputs.subscription_id }} \
             --no-dry-run \
+            --no-prompt
+
+  nuke-destroy-run:
+ 
+    runs-on: ubuntu-latest
+ 
+    env:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_USE_OIDC: true
+
+    environment:
+      name: nuke-destroy-run
+ 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Prepare Azure OIDC token for Azure Nuke
+        shell: bash
+        run: |
+            token=$(curl --fail --silent --show-error \
+              --header "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=api://AzureADTokenExchange" | jq --raw-output '.value')
+            test -n "${token}" && test "${token}" != "null"
+
+            token_file="${RUNNER_TEMP}/azure-federated-token"
+            printf '%s' "${token}" > "${token_file}"
+            echo "AZURE_FEDERATED_TOKEN_FILE=${token_file}" >> "${GITHUB_ENV}"
+
+      - name: Prepare Azure Nuke configuration
+        shell: bash
+        run: |
+            sed "s/__AZURE_TENANT_ID__/${AZURE_TENANT_ID}/" \
+              .azure-nuke/config.yaml > "${RUNNER_TEMP}/azure-nuke-config.yaml"
+ 
+      - name: Install Azure Nuke
+        run: |
+            version="v1.2.9"
+            asset="azure-nuke-${version}-linux-amd64.tar.gz"
+            base_url="https://github.com/ekristen/azure-nuke/releases/download/${version}"
+
+            curl --fail --silent --show-error --location "${base_url}/${asset}" --output "/tmp/${asset}"
+            curl --fail --silent --show-error --location "${base_url}/checksums.txt" --output /tmp/azure-nuke-checksums.txt
+            (cd /tmp && grep "${asset}" azure-nuke-checksums.txt | sha256sum --check)
+
+            tar --extract --gzip --file "/tmp/${asset}" --directory /tmp
+            sudo install --mode 0755 /tmp/azure-nuke /usr/local/bin/azure-nuke
+            azure-nuke --version
+    
+      - name: Show Inputs
+        run: |
+            echo "Management Group = ${{ github.event.inputs.management_group_id }}"
+            echo "Subscription = ${{ github.event.inputs.subscription_id }}"
+            echo "Delete = ${{ github.event.inputs.delete_resources }}"
+    
+      - name: Dry Run
+        if: github.event.inputs.delete_resources == 'false'
+        run: |
+            azure-nuke run \
+            --config "${RUNNER_TEMP}/azure-nuke-config.yaml" \
+            --subscription-id ${{ github.event.inputs.subscription_id }} \
             --no-prompt
