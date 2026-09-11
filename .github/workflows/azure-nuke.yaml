@@ -52,7 +52,7 @@ jobs:
 
             curl --fail --silent --show-error --location "${base_url}/${asset}" --output "/tmp/${asset}"
             curl --fail --silent --show-error --location "${base_url}/checksums.txt" --output /tmp/azure-nuke-checksums.txt
-            grep "${asset}" /tmp/azure-nuke-checksums.txt | sha256sum --check
+            (cd /tmp && grep "${asset}" azure-nuke-checksums.txt | sha256sum --check)
 
             tar --extract --gzip --file "/tmp/${asset}" --directory /tmp
             sudo install --mode 0755 /tmp/azure-nuke /usr/local/bin/azure-nuke
