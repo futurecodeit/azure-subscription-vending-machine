@@ -29,9 +29,6 @@ jobs:
     runs-on: ubuntu-latest
  
     env:
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -94,14 +91,7 @@ jobs:
             --subscription-id ${{ github.event.inputs.subscription_id }} \
             --no-prompt
     
-      - name: Delete Resources
-        if: github.event.inputs.delete_resources == 'true'
-        run: |
-            azure-nuke run \
-            --config "${RUNNER_TEMP}/azure-nuke-config.yaml" \
-            --subscription-id ${{ github.event.inputs.subscription_id }} \
-            --no-dry-run \
-            --no-prompt
+      
 
   approve-nuke-destroy:
     needs: nuke-validate
@@ -120,9 +110,6 @@ jobs:
     runs-on: ubuntu-latest
  
     env:
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -178,10 +165,11 @@ jobs:
             echo "Subscription = ${{ github.event.inputs.subscription_id }}"
             echo "Delete = ${{ github.event.inputs.delete_resources }}"
     
-      - name: Dry Run
-        if: github.event.inputs.delete_resources == 'false'
+      - name: Delete Resources
+        if: github.event.inputs.delete_resources == 'true'
         run: |
             azure-nuke run \
             --config "${RUNNER_TEMP}/azure-nuke-config.yaml" \
             --subscription-id ${{ github.event.inputs.subscription_id }} \
+            --no-dry-run \
             --no-prompt
